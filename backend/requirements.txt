@@ -1,0 +1,19 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+sqlalchemy>=2.0
+pydantic>=2.6
+python-multipart>=0.0.9
+httpx>=0.27
+pdfplumber>=0.11
+python-docx>=1.1
+scikit-learn>=1.4
+PyJWT>=2.8
+pytest>=8.0
+
+# Optional but recommended (the app degrades gracefully without them):
+# sentence-transformers>=2.7   # SBERT semantic matching (falls back to TF-IDF)
+# spacy>=3.7                   # then: python -m spacy download en_core_web_sm  (better name extraction)
+# pytesseract>=0.3.10          # OCR for scanned resumes (needs the tesseract binary)
+# pdf2image>=1.17              # OCR page rendering (needs poppler)
+# psycopg2-binary>=2.9         # PostgreSQL driver for production
+pytest-asyncio>=0.23

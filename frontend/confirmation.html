@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interview confirmation</title>
+<style>
+:root{--bg:#101827;--panel:#1e2d44;--line:#31435f;--text:#e7edf7;--mute:#9aaac1;--acc:#5b8def;--good:#55c9a0;--bad:#ef7887}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;font:15px/1.5 "Segoe UI",system-ui,sans-serif;color:var(--text);background:linear-gradient(135deg,#101827,#1e304b);display:grid;place-items:center}
+.card{width:min(680px,100%);padding:30px;background:rgba(30,45,68,.92);border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 50px rgba(2,8,20,.35)}
+.brand{font-weight:700;font-size:18px;margin-bottom:24px}.eyebrow{color:var(--acc);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+h1{font-size:28px;line-height:1.2;margin:7px 0 8px}h2{font-size:16px;margin:24px 0 8px}.mute{color:var(--mute)}
+.description{white-space:pre-wrap;color:#d8e1ef}.chips{display:flex;gap:7px;flex-wrap:wrap}.chip{padding:5px 10px;border:1px solid var(--line);border-radius:99px;color:#cbd8eb;background:rgba(12,22,37,.3)}
+.details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}.detail{padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(12,22,37,.25)}.detail b{display:block;font-size:12px;color:var(--mute);margin-bottom:3px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}.btn{border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:650;cursor:pointer}.accept{background:var(--good);color:#08271e}.decline{background:transparent;color:var(--bad);border:1px solid var(--bad)}.btn:disabled{opacity:.6;cursor:wait}
+.message{margin-top:18px;padding:12px;border-radius:10px;background:rgba(12,22,37,.4);color:var(--mute)}.message.good{color:var(--good)}.message.bad{color:var(--bad)}
+@media(max-width:520px){body{padding:12px}.card{padding:22px}.details{grid-template-columns:1fr}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">Talent Screener</div>
+  <div id="content"><div class="mute">Loading interview details...</div></div>
+</main>
+<script>
+const apiBase=new URL(new URLSearchParams(location.search).get("api")||"http://127.0.0.1:8000").origin;
+const token=new URLSearchParams(location.search).get("token");
+const content=document.querySelector("#content");
+const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function message(text,kind=""){content.insertAdjacentHTML("beforeend",`<div class="message ${kind}">${esc(text)}</div>`)}
+async function load(){
+  if(!token){content.innerHTML="";message("This confirmation link is missing its secure token.","bad");return}
+  try{
+    const response=await fetch(`${apiBase}/whatsapp/confirm/${encodeURIComponent(token)}`);
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.detail||"This confirmation link is invalid or expired.");
+    const skills=(data.required_skills||[]).map(skill=>`<span class="chip">${esc(skill)}</span>`).join("")||'<span class="mute">Not specified</span>';
+    content.innerHTML=`<div class="eyebrow">Interview availability</div><h1>${esc(data.job_title)}</h1><div class="mute">Hello ${esc(data.candidate_name)}, please review the opportunity below.</div>
+      <h2>Job description</h2><div class="description">${esc(data.job_description)}</div>
+      <h2>Required skills</h2><div class="chips">${skills}</div>
+      <div class="details"><div class="detail"><b>Minimum experience</b>${esc(data.min_experience)} year${data.min_experience===1?"":"s"}</div><div class="detail"><b>Education</b>${esc(data.education_level||"Any")}</div></div>
+      <div id="status"></div><div class="actions"><button class="btn accept" type="button" data-decision="accepted">Confirm interview availability</button><button class="btn decline" type="button" data-decision="declined">I am not available</button></div>`;
+    if(data.status==="accepted"||data.status==="declined"){document.querySelector(".actions").remove();showStatus(data.status)}
+    document.querySelectorAll("[data-decision]").forEach(button=>button.onclick=()=>respond(button.dataset.decision,button));
+  }catch(error){content.innerHTML="";message(error.message,"bad")}
+}
+function showStatus(status){const node=document.querySelector("#status");node.className="message "+(status==="accepted"?"good":"bad");node.textContent=status==="accepted"?"Your interview availability has been confirmed.":"Your response has been recorded."; }
+async function respond(decision,button){
+  document.querySelectorAll("[data-decision]").forEach(item=>item.disabled=true);
+  try{
+    const response=await fetch(`${apiBase}/whatsapp/confirm/${encodeURIComponent(token)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision})});
+    const data=await response.json();if(!response.ok)throw new Error(data.detail||"Could not save your response.");
+    document.querySelector(".actions").remove();showStatus(data.status);
+  }catch(error){message(error.message,"bad");document.querySelectorAll("[data-decision]").forEach(item=>item.disabled=false)}
+}
+load();
+</script>
+</body>
+</html>
